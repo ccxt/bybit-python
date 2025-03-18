@@ -1,0 +1,15 @@
+name: build
+on:
+    push:
+      branches:
+        - main
+
+jobs:
+  use-reusable-workflow:
+    strategy:
+      matrix:
+        exchange_name: [kucoin, bybit] # ['bingx', 'bitget', 'bitmart', 'bitmex', 'bybit', 'coinex', 'cryptocom', 'gate', 'hashkey', 'htx', 'hyperliquid', 'kucoin', 'kucoinfutures', 'mexc', 'okx', 'woo', 'woofipro']
+    uses: ./.github/workflows/reusable.yml
+    with:
+      exchange_name: ${{ matrix.exchange_name }}
+    secrets: inherit
