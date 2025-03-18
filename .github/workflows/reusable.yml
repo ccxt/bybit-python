@@ -46,4 +46,13 @@ jobs:
       #     git pull --allow-unrelated-histories prod main || echo "Git pull failed"
       #     git push prod main --force
 
-          
+      - name: Update README with repository links
+        run: ./build/update-readme.sh
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "Update README with exchange repository links" || echo "No changes to commit"
+          git push
