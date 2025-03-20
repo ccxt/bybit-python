@@ -12,6 +12,20 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "TSX: file",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "tsx",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": [
+                "<node_internals>/**",
+                "node_modules/**"
+            ],
+            "sourceMaps": true,
+        },
+        {
             "name": "TSX: build",
             "type": "node",
             "request": "launch",

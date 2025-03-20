@@ -19,7 +19,7 @@ pip install __PYTHON_PACKAGE_NAME__
 ### Async
 
 ```Python
-from __PYTHON_PACKAGE_NAME__ import __ExchangeName__Async
+from __PYTHON_PACKAGE_KEY__ import __ExchangeName__Async
 
 async def main():
     instance = __ExchangeName__Async({})
@@ -29,7 +29,7 @@ async def main():
 ### Sync
 
 ```Python
-from __PYTHON_PACKAGE_NAME__ import __ExchangeName__Sync
+from __PYTHON_PACKAGE_KEY__ import __ExchangeName__Sync
 
 def main():
     instance = __ExchangeName__Sync({})
@@ -39,7 +39,7 @@ def main():
 ### Websockets
 
 ```Python
-from __PYTHON_PACKAGE_NAME__ import __ExchangeName__Ws
+from __PYTHON_PACKAGE_KEY__ import __ExchangeName__Ws
 
 async def main():
     instance = __ExchangeName__Ws({})

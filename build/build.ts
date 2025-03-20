@@ -1,45 +1,11 @@
 import * as fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url';
-import { exec, execSync } from 'node:child_process';
 
+import { argvs, sanitizePackageName, exchangeArgv, execSync, cp, capitalize, regexAll } from './utils';
+
+import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-
-// ##################### helpers ##################### //
-
-function cp(source: string, destination: string): void {
-    // check if source is file or dir
-    if (!fs.existsSync(source)) {
-        throw new Error(`Source file/directory does not exist: ${source}`);
-    }
-    const stats = fs.statSync(source);
-    if (stats.isFile()) {
-        // get parent directory
-        const parentDir = path.dirname(destination);
-        // check if parent directory exists
-        if (!fs.existsSync(parentDir)) {
-            fs.mkdirSync(parentDir, { recursive: true });
-        }
-        fs.copyFileSync(source, destination);
-        return;
-    }
-    if (!fs.existsSync(destination)) {
-        fs.mkdirSync(destination, { recursive: true });
-    }
-    const files = fs.readdirSync(source);
-    for (const file of files) {
-        const srcPath = path.join(source, file);
-        const destPath = path.join(destination, file);
-        cp(srcPath, destPath);
-    }
-}
-
-function capitalize(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-// ################################################### //
 
 
 
@@ -60,7 +26,7 @@ class build {
         this.init(exchange);
     }
 
-    async downloadRepo() {
+    async downloadCcxtRepo() {
         try {
             execSync('rm -rf ccxt/', { stdio: 'ignore' });
         } catch (ex) {
@@ -69,7 +35,7 @@ class build {
         execSync ('git clone --depth 1 https://github.com/ccxt/ccxt.git');
     }
 
-    copyFiles (exchange:string): void {
+    copyCcxtFiles (exchange:string): void {
         const sourceDir = this.sourceFolder + '/python/ccxt/';
         const copyList = [
             // exchange files
@@ -101,21 +67,11 @@ class build {
         }
     }
 
-    regexAll (text: string, array: any[]) {
-        for (const i in array) {
-            const regexValue = array[i][0]
-            const flags = (typeof regexValue === 'string') ? 'g' : undefined
-            const regex = new RegExp (regexValue, flags)
-            text = text.replace (regex, array[i][1])
-        }
-        return text
-    }
-
     async cleanInitFile(filePath: string, async = false) {
         let fileContent = fs.readFileSync(filePath, 'utf8');
         for (const id of this.allExchangesList) {
             if (id !== this.exchange) {
-                fileContent = this.regexAll (fileContent, [
+                fileContent = regexAll (fileContent, [
                     [ new RegExp(`from ccxt\.${id} import ${id}.+\n`), '' ],
                     [ new RegExp(`from ccxt\.async_support\.${id} import ${id}.+\n`), '' ],
                     [ new RegExp(`from ccxt\.pro\.${id} import ${id}.+\n`), '' ],
@@ -183,26 +139,31 @@ class build {
         fs.writeFileSync (__dirname + '/../meta.json', stringified);
     }
 
-    capitalize (str: string) {
-        return str.charAt(0).toUpperCase() + str.slice(1);
-    }
-
     replaceGlobalRegexes (text: string, array: any[]) {
         let newText = text;
-        newText = this.regexAll (newText, [
+        newText = regexAll (newText, [
             ['__exchangeName__', this.exchange],
-            ['__ExchangeName__', this.capitalize(this.exchange)],
+            ['__ExchangeName__', capitalize(this.exchange)],
         ]);
+        const otherStrings = {
+            '__LINK_TO_OFFICIAL_EXCHANGE_DOCS__': 'https://ccxt.com',
+            '__PYTHON_PACKAGE_NAME__': undefined,
+            '__TEST_SYMBOL__': 'BTC/USDC',
+        };
         const exchangeConfig = this.globalConfigs['exchanges'][this.exchange];
-        for (const key in exchangeConfig) {
-            newText = newText.replace(new RegExp(`${key}`, 'g'), exchangeConfig[key]);
+        for (const key in otherStrings) {
+            const defaultValue = otherStrings[key];
+            let value = exchangeConfig[key] || defaultValue; // at first, read from config, if not, use default
+            newText = newText.replace(new RegExp(`${key}`, 'g'), value);
         }
+        const sanitized = sanitizePackageName (exchangeConfig['__PYTHON_PACKAGE_NAME__']);
+        newText = newText.replace(new RegExp(`__PYTHON_PACKAGE_KEY__`, 'g'), sanitized);
         return newText;
     }
 
     generateExamples () {
         const destinationDir = __dirname + `/../examples/`;
-        cp (__dirname + '/sources/examples/', destinationDir);
+        cp (__dirname + '/templates/examples/', destinationDir);
         // iterate through files and make replacements
         const files = fs.readdirSync(destinationDir);
         for (const file of files) {
@@ -215,7 +176,7 @@ class build {
 
     generateReadme () {
         const destinationDir = __dirname + `/../README.md`;
-        cp (__dirname + '/sources/README.md', destinationDir);
+        cp (__dirname + '/templates/README.md', destinationDir);
         let fileContent = fs.readFileSync(destinationDir, 'utf8');
         fileContent = this.replaceGlobalRegexes(fileContent, []);
         fs.writeFileSync(destinationDir, fileContent);
@@ -223,9 +184,9 @@ class build {
 
     async init (exchange:string) {
         if (this.downloadAndDelete) {
-            await this.downloadRepo ();
+            await this.downloadCcxtRepo ();
         }
-        this.copyFiles (exchange);
+        this.copyCcxtFiles (exchange);
         await this.setAllExchangesList ();
         await this.creataPackageInitFile ();
 
@@ -250,18 +211,5 @@ class build {
 
 
 
-
-const argvs = process.argv.slice(2);
-let exchange = argvs[0];
-if (!exchange || exchange.includes('--')) {
-    const nameFile = __dirname + '/../name';
-    if (fs.existsSync(nameFile)) {
-        exchange = fs.readFileSync(nameFile, 'utf8').trim();
-    }
-}
-if (!exchange) {
-    console.error('Please input exchange name in a "name" file in the root of the project');
-    process.exit(1);
-}
 const donwloadAndDelete = !argvs.includes('--nodownload');
-new build(exchange, donwloadAndDelete);
+new build(exchangeArgv, donwloadAndDelete);
